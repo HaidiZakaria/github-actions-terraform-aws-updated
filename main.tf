@@ -1,16 +1,14 @@
 provider "aws" {
-  region     = var.region
-  access_key = var.aws_access_key
-  secret_key = var.aws_secret_key
+  region = "eu-west-1"
 }
 
 resource "aws_key_pair" "deployer" {
-  key_name   = "github-actions-key"
-  public_key = file(var.public_key_path)
+  key_name   = "github-actions-key-v2" # Updated name to avoid duplication
+  public_key = file("${path.module}/id_rsa.pub")
 }
 
 resource "aws_security_group" "web_sg" {
-  name        = "web-sg"
+  name        = "web-sg-v2" # Updated name to avoid duplication
   description = "Allow HTTP and SSH"
 
   ingress {
@@ -36,27 +34,32 @@ resource "aws_security_group" "web_sg" {
 }
 
 resource "aws_instance" "web" {
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
-  key_name                    = aws_key_pair.deployer.key_name
-  vpc_security_group_ids      = [aws_security_group.web_sg.id]
+  ami           = "ami-0c55b159cbfafe1f0" # Amazon Linux 2 for eu-west-1
+  instance_type = "t2.micro"
+  key_name      = aws_key_pair.deployer.key_name
+  security_groups = [aws_security_group.web_sg.name]
+
+  connection {
+    type        = "ssh"
+    user        = "ec2-user"
+    private_key = file("${path.module}/id_rsa")
+    host        = self.public_ip
+  }
 
   provisioner "remote-exec" {
     inline = [
-      "sudo apt update -y",
-      "sudo apt install apache2 -y",
-      "sudo systemctl start apache2"
+      "sudo yum update -y",
+      "sudo yum install -y httpd",
+      "sudo systemctl start httpd",
+      "sudo systemctl enable httpd"
     ]
-
-    connection {
-      type        = "ssh"
-      user        = "ubuntu"
-      private_key = file(var.private_key_path)
-      host        = self.public_ip
-    }
   }
 
   tags = {
-    Name = "GitHub-Actions-Instance"
+    Name = "Terraform-Web-Server"
   }
+}
+
+output "public_ip" {
+  value = aws_instance.web.public_ip
 }
