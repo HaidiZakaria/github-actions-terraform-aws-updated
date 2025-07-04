@@ -1,4 +1,4 @@
-name: Terraform EC2 Deployment
+name: Terraform EC2 CI/CD
 
 on:
   push:
@@ -23,11 +23,12 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
-        run: terraform plan
+        run: terraform plan -var="private_key=${{ secrets.TF_SSH_PRIVATE_KEY_B64 }}"
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve -var="private_key=${{ secrets.TF_SSH_PRIVATE_KEY_B64 }}"
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+
